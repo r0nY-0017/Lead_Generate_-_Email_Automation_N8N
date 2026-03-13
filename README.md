@@ -1,20 +1,13 @@
-<<<<<<< Updated upstream
-# 🔥 Fire AI — Lead Generation & Email Automation System
-=======
 # 🔥 Lead Generation & Email Automation System
->>>>>>> Stashed changes
+
 
 An end-to-end automated lead generation and email follow-up system built with **n8n**, **Google Sheets**, **Gmail**, and **OpenAI**. When a potential client submits the lead form, the system automatically scores them, saves their data, sends a personalized email, and handles all future replies using AI.
-
 ---
-<<<<<<< Updated upstream
-
 
 =======
 ![alt text](<Screenshot 2026-03-14 034021.png>)
 ![alt text](<Screenshot 2026-03-14 034106.png>)
 ![alt text](<Screenshot 2026-03-14 034037.png>)
->>>>>>> Stashed changes
 
 ## 🚀 Features
 
@@ -246,13 +239,6 @@ The tone of the AI reply automatically adjusts based on lead category:
 ---
 
 ## 🔥 Built By
-
-<<<<<<< Updated upstream
-**Fire AI** — Intelligent Agents. Real Results.
-
-📧 mehedi0017.fireai@gmail.com
-=======
 **Md Mehedi Hasan Rony**
 
 📧 hasan15-5976@diu.edu.bd
->>>>>>> Stashed changes
