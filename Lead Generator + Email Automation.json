@@ -1,0 +1,1163 @@
+{
+  "name": "Lead Generator + Email Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-capture",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "--",
+      "name": "Lead Form Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        848,
+        624
+      ],
+      "webhookId": "lead-capture-001"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// LEAD SCORING ENGINE\n// ============================================\nfunction formatDate(input) {\n  const d = new Date(input);\n  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];\n  const day   = String(d.getDate()).padStart(2, '0');\n  const month = months[d.getMonth()];\n  const year  = d.getFullYear();\n  const hours = String(d.getHours()).padStart(2, '0');\n  const mins  = String(d.getMinutes()).padStart(2, '0');\n  return `${day} ${month} ${year} - ${hours}:${mins}`;\n}\n\nconst data = $input.first().json.body;\n\nlet score = 0;\nconst breakdown = {};\n\n// --- 1. BUDGET SCORE (max 30 pts) ---\nconst budget = parseInt(data.budget) || 0;\nif (budget >= 20000)      { score += 30; breakdown.budget = 30; }\nelse if (budget >= 10000) { score += 22; breakdown.budget = 22; }\nelse if (budget >= 5000)  { score += 15; breakdown.budget = 15; }\nelse if (budget >= 1000)  { score += 8;  breakdown.budget = 8;  }\nelse                      { score += 3;  breakdown.budget = 3;  }\n\n// --- 2. TIMELINE SCORE (max 30 pts) ---\nconst timeline = data.timeline || '';\nif (timeline === 'immediate')  { score += 30; breakdown.timeline = 30; }\nelse if (timeline === '1-3months') { score += 18; breakdown.timeline = 18; }\nelse                           { score += 5;  breakdown.timeline = 5;  }\n\n// --- 3. COMPANY SIZE SCORE (max 25 pts) ---\nconst size = data.companySize || '';\nif (size === '500+')       { score += 25; breakdown.companySize = 25; }\nelse if (size === '201-500') { score += 20; breakdown.companySize = 20; }\nelse if (size === '51-200') { score += 14; breakdown.companySize = 14; }\nelse if (size === '11-50')  { score += 8;  breakdown.companySize = 8;  }\nelse                        { score += 3;  breakdown.companySize = 3;  }\n\n// --- 4. ENGAGEMENT SCORE (max 15 pts) ---\nconst needsLen = (data.needs || '').trim().length;\nif (needsLen > 150)      { score += 15; breakdown.engagement = 15; }\nelse if (needsLen > 80)  { score += 10; breakdown.engagement = 10; }\nelse if (needsLen > 30)  { score += 6;  breakdown.engagement = 6;  }\nelse                     { score += 2;  breakdown.engagement = 2;  }\n\n// Cap at 100\nscore = Math.min(score, 100);\n\n// --- CATEGORY ---\nlet category, priority;\nif (score >= 75) {\n  category = 'Hot';\n  priority = 'HIGH';\n} else if (score >= 50) {\n  category = 'Warm';\n  priority = 'MEDIUM';\n} else {\n  category = 'Cold';\n  priority = 'LOW';\n}\n\nreturn [{\n  json: {\n    // Original form data\n    ...data,\n    fullName: `${data.firstName} ${data.lastName}`,\n    // Scoring results\n    leadScore: score,\n    leadCategory: category,\n    priority: priority,\n    scoreBreakdown: JSON.stringify(breakdown),\n    // Meta\n    submittedAt: formatDate(data.submittedAt || new Date()),\n    processedAt: formatDate(new Date()),\n  }\n}];"
+      },
+      "id": "",
+      "name": "Calculate Lead Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        624
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Lead Data",
+          "cachedResultUrl": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": ""
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "First Name": "={{ $json.firstName }}",
+            "Last Name": "={{ $json.lastName }}",
+            "Full Name": "={{ $json.fullName }}",
+            "Email": "={{ $json.email }}",
+            "Phone": "={{ $json.phone }}",
+            "Company": "={{ $json.company }}",
+            "Industry": "={{ $json.industry }}",
+            "Company Size": "={{ $json.companySize }}",
+            "Budget (USD)": "={{ $json.budget }}",
+            "Timeline": "={{ $json.timeline }}",
+            "Needs": "={{ $json.needs }}",
+            "Lead Score": "={{ $json.leadScore }}",
+            "Category": "={{ $json.leadCategory }}",
+            "Priority": "={{ $json.priority }}",
+            "Score Breakdown": "={{ $json.scoreBreakdown }}",
+            "Timestamp": "={{ $json.submittedAt }}"
+          },
+          "matchingColumns": [
+            "Email"
+          ],
+          "schema": [
+            {
+              "id": "SL",
+              "displayName": "SL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "First Name",
+              "displayName": "First Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Last Name",
+              "displayName": "Last Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Full Name",
+              "displayName": "Full Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Industry",
+              "displayName": "Industry",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Company Size",
+              "displayName": "Company Size",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Budget (USD)",
+              "displayName": "Budget (USD)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Timeline",
+              "displayName": "Timeline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Needs",
+              "displayName": "Needs",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Lead Score",
+              "displayName": "Lead Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Priority",
+              "displayName": "Priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Score Breakdown",
+              "displayName": "Score Breakdown",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email Sent",
+              "displayName": "Email Sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "",
+      "name": "Save to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1232,
+        624
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": ""
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.Email }}",
+        "subject": "=Thanks {{ $json['Full Name'] }} For Choosing us. ",
+        "message": "=<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>\n<body style=\"font-family:'Segoe UI',Arial,sans-serif;background:#f0f0f5;margin:0;padding:24px;\">\n<div style=\"max-width:600px;margin:0 auto;\">\n\n  <!-- BANNER -->\n  <div style=\"border-radius:16px 16px 0 0;overflow:hidden;position:relative;background:#1a0800;\">\n    <img src=\"https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=600&q=80\" alt=\"\" style=\"width:100%;height:220px;object-fit:cover;opacity:0.4;display:block;\">\n    <div style=\"position:absolute;top:0;left:0;right:0;bottom:0;text-align:center;padding:28px 24px;\">\n      <div style=\"display:inline-block;background:rgba(255,69,0,0.15);border:1px solid rgba(255,69,0,0.4);border-radius:50px;padding:5px 18px;font-size:11px;color:#ff8c55;letter-spacing:0.12em;font-weight:700;margin-bottom:14px;\">🔥 WE ARE LOOKING FOR YOU</div>\n      <br>\n      <span style=\"color:#ffffff;font-size:26px;font-weight:800;line-height:1.2;text-shadow:0 2px 12px rgba(0,0,0,0.6);\">Thank You for Choosing<br>Fire AI! 🤖</span>\n      <br><br>\n      <span style=\"color:rgba(255,255,255,0.75);font-size:14px;\">Intelligent Agents. Real Results.</span>\n    </div>\n  </div>\n\n  <!-- BODY -->\n  <div style=\"background:#ffffff;padding:36px 32px;border-left:1px solid #e5e5ea;border-right:1px solid #e5e5ea;\">\n\n    <p style=\"font-size:16px;color:#111;margin:0 0 14px;\">Hi <strong style=\"color:#ff4500;\">{{ $json['First Name'] }}</strong>,</p>\n    <p style=\"color:#444;line-height:1.75;margin:0 0 20px;font-size:15px;\">Your profile stood out to us immediately. A <strong>{{ $json['Company Size'] }}</strong> company in <strong>{{ $json['Industry'] }}</strong> — that's exactly who we build AI Agents for. We've reviewed your submission and we're ready to act fast.</p>\n\n    <!-- Score -->\n    <div style=\"background:linear-gradient(135deg,#fff5f2,#fff0eb);border-left:4px solid #ff4500;border-radius:8px;padding:18px 22px;margin:24px 0;\">\n      <p style=\"margin:0 0 4px;color:#cc3300;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;\">Your Lead Score</p>\n      <p style=\"margin:0;color:#ff4500;font-size:28px;font-weight:800;line-height:1;\">{{ $json['Lead Score'] }}<span style=\"font-size:15px;color:#ff7a50;\">/100 — 🔥 HOT</span></p>\n    </div>\n\n    <p style=\"color:#444;line-height:1.75;font-size:15px;margin:0 0 28px;\">You mentioned: <em style=\"color:#ff4500;\">\"{{ $json['Needs'] }}\"</em> — Our team already has ideas tailored specifically for <strong>{{ $json['Company'] }}</strong>.</p>\n\n    <!-- Services -->\n    <p style=\"color:#111;font-size:17px;font-weight:800;margin:0 0 6px;border-top:2px solid #f0f0f5;padding-top:24px;\">🤖 What Fire AI Does</p>\n    <p style=\"color:#888;font-size:13px;margin:0 0 18px;\">Our core AI Agent services — built for businesses like yours</p>\n\n    <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin-bottom:12px;\">\n      <tr>\n        <td width=\"52\" valign=\"top\"><div style=\"width:44px;height:44px;background:linear-gradient(135deg,#ff4500,#ff6b35);border-radius:10px;text-align:center;line-height:44px;font-size:20px;\">⚡</div></td>\n        <td valign=\"top\" style=\"padding-left:14px;background:#fafafa;border-radius:10px;padding:14px 14px 14px 14px;\">\n          <p style=\"margin:0 0 4px;color:#111;font-size:14px;font-weight:700;\">AI Workflow Automation</p>\n          <p style=\"margin:0;color:#666;font-size:13px;line-height:1.6;\">আপনার business এর repetitive কাজগুলো AI দিয়ে automate করি — ২৪/৭ কোনো break ছাড়া।</p>\n        </td>\n      </tr>\n    </table>\n\n    <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin-bottom:12px;\">\n      <tr>\n        <td width=\"52\" valign=\"top\"><div style=\"width:44px;height:44px;background:linear-gradient(135deg,#7c3aed,#a855f7);border-radius:10px;text-align:center;line-height:44px;font-size:20px;\">🧠</div></td>\n        <td valign=\"top\" style=\"padding-left:14px;background:#fafafa;border-radius:10px;padding:14px;\">\n          <p style=\"margin:0 0 4px;color:#111;font-size:14px;font-weight:700;\">Custom AI Agent Development</p>\n          <p style=\"margin:0;color:#666;font-size:13px;line-height:1.6;\">আপনার industry ও use case বুঝে একটা intelligent agent তৈরি করি যেটা শুধু আপনার জন্য।</p>\n        </td>\n      </tr>\n    </table>\n\n    <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin-bottom:12px;\">\n      <tr>\n        <td width=\"52\" valign=\"top\"><div style=\"width:44px;height:44px;background:linear-gradient(135deg,#0ea5e9,#38bdf8);border-radius:10px;text-align:center;line-height:44px;font-size:20px;\">🔗</div></td>\n        <td valign=\"top\" style=\"background:#fafafa;border-radius:10px;padding:14px;\">\n          <p style=\"margin:0 0 4px;color:#111;font-size:14px;font-weight:700;\">System & Tool Integration</p>\n          <p style=\"margin:0;color:#666;font-size:13px;line-height:1.6;\">আপনার existing tools (CRM, ERP, Sheets, Slack ইত্যাদি) এর সাথে AI কে connect করি seamlessly।</p>\n        </td>\n      </tr>\n    </table>\n\n    <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin-bottom:28px;\">\n      <tr>\n        <td width=\"52\" valign=\"top\"><div style=\"width:44px;height:44px;background:linear-gradient(135deg,#059669,#10b981);border-radius:10px;text-align:center;line-height:44px;font-size:20px;\">📈</div></td>\n        <td valign=\"top\" style=\"background:#fafafa;border-radius:10px;padding:14px;\">\n          <p style=\"margin:0 0 4px;color:#111;font-size:14px;font-weight:700;\">AI-Powered Lead & Sales Automation</p>\n          <p style=\"margin:0;color:#666;font-size:13px;line-height:1.6;\">Lead scoring, auto follow-up, email automation — পুরো sales pipeline AI দিয়ে চালান।</p>\n        </td>\n      </tr>\n    </table>\n\n    <!-- Pricing -->\n    <p style=\"color:#111;font-size:17px;font-weight:800;margin:0 0 6px;border-top:2px solid #f0f0f5;padding-top:24px;\">💰 Our Packages</p>\n    <p style=\"color:#888;font-size:13px;margin:0 0 18px;\">Transparent pricing — no hidden costs</p>\n\n    <div style=\"border:1px solid #e5e5ea;border-radius:12px;padding:18px 20px;margin-bottom:10px;\">\n      <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr>\n        <td><p style=\"margin:0;color:#111;font-size:15px;font-weight:700;\">🌱 Starter</p></td>\n        <td align=\"right\"><p style=\"margin:0;color:#ff4500;font-size:18px;font-weight:800;\">$499<span style=\"font-size:12px;color:#888;\">/mo</span></p></td>\n      </tr></table>\n      <p style=\"margin:8px 0 0;color:#666;font-size:13px;line-height:1.6;\">১টি AI Agent · Basic automation · Email support · Small team এর জন্য ideal</p>\n    </div>\n\n    <div style=\"border:2px solid #ff4500;border-radius:12px;padding:18px 20px;margin-bottom:10px;background:#fffaf9;position:relative;\">\n      <div style=\"position:absolute;top:-10px;right:16px;background:#ff4500;color:#fff;font-size:11px;font-weight:700;padding:3px 12px;border-radius:20px;\">MOST POPULAR</div>\n      <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr>\n        <td><p style=\"margin:0;color:#111;font-size:15px;font-weight:700;\">🚀 Growth</p></td>\n        <td align=\"right\"><p style=\"margin:0;color:#ff4500;font-size:18px;font-weight:800;\">$999<span style=\"font-size:12px;color:#888;\">/mo</span></p></td>\n      </tr></table>\n      <p style=\"margin:8px 0 0;color:#666;font-size:13px;line-height:1.6;\">৩টি AI Agent · Full automation suite · Priority support · Growing business এর জন্য</p>\n    </div>\n\n    <div style=\"border:1px solid #e5e5ea;border-radius:12px;padding:18px 20px;margin-bottom:32px;\">\n      <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr>\n        <td><p style=\"margin:0;color:#111;font-size:15px;font-weight:700;\">🏢 Enterprise</p></td>\n        <td align=\"right\"><p style=\"margin:0;color:#ff4500;font-size:18px;font-weight:800;\">Custom</p></td>\n      </tr></table>\n      <p style=\"margin:8px 0 0;color:#666;font-size:13px;line-height:1.6;\">Unlimited agents · Dedicated team · Custom integrations · Enterprise-grade SLA</p>\n    </div>\n\n    <!-- CTA -->\n    <div style=\"text-align:center;margin:8px 0 28px;\">\n      <a href=\"mailto:mehedi0017.fireai@gmail.com\" style=\"display:inline-block;background:linear-gradient(135deg,#ff4500,#ff6b35);color:#fff;text-decoration:none;padding:15px 40px;border-radius:10px;font-weight:800;font-size:16px;\">Schedule a Call This Week →</a>\n      <br>\n      <span style=\"color:#aaa;font-size:12px;display:inline-block;margin-top:10px;\">Reply করুন · mehedi0017.fireai@gmail.com</span>\n    </div>\n\n    <div style=\"border-top:1px solid #f0f0f5;padding-top:20px;\">\n      <p style=\"color:#888;font-size:13px;line-height:1.8;margin:0;\">Talk soon,<br><strong style=\"color:#111;\">Fire AI Team</strong><br><span style=\"color:#ff4500;font-size:12px;\">🔥 Igniting Intelligence</span></p>\n    </div>\n  </div>\n\n  <!-- FOOTER -->\n  <div style=\"background:#f9f9f9;border:1px solid #e5e5ea;border-top:none;border-radius:0 0 16px 16px;padding:16px 32px;text-align:center;\">\n    <p style=\"font-size:12px;color:#bbb;margin:0;\">© 2026 Fire AI &nbsp;·&nbsp; <a href=\"#\" style=\"color:#bbb;text-decoration:none;\">Unsubscribe</a></p>\n  </div>\n\n</div>\n</body>\n</html>",
+        "options": {}
+      },
+      "id": "54a09868-4d74-4ca7-9b8d-3ab43c0ffd89",
+      "name": "Send Hot Lead Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1664,
+        384
+      ],
+      "webhookId": "e736da3b-3066-493c-b364-d0b0ef3b4d18",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": ""
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.Email }}",
+        "subject": "=⚡ Great timing, {{ $json['Full Name'] }} - lets talk",
+        "message": "=<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>\n<body style=\"font-family: 'Segoe UI', Arial, sans-serif; background: #f0f0f5; margin: 0; padding: 24px;\">\n<div style=\"max-width: 600px; margin: 0 auto;\">\n\n  <!-- ───── BANNER ───── -->\n  <div style=\"background: linear-gradient(135deg, #1a1200, #3d2800, #7c4a00); border-radius: 16px 16px 0 0; padding: 0; overflow: hidden; position: relative;\">\n    <img src=\"https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=600&q=80\" alt=\"AI Technology\" style=\"width:100%; height:220px; object-fit:cover; opacity:0.4; display:block;\">\n    <div style=\"position:absolute; top:0; left:0; right:0; bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; text-align:center;\">\n      <div style=\"background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.4); border-radius:50px; padding:5px 18px; font-size:11px; color:#fbbf24; letter-spacing:0.12em; font-weight:700; margin-bottom:12px;\">⚡ WARM LEAD — PROMISING</div>\n      <h1 style=\"color:#ffffff; font-size:26px; font-weight:800; margin:0 0 8px; line-height:1.2; text-shadow:0 2px 12px rgba(0,0,0,0.5);\">Great Timing,<br>{{ $json['First Name'] }}! ⚡</h1>\n      <p style=\"color:rgba(255,255,255,0.75); font-size:14px; margin:0;\">Intelligent Agents. Real Results.</p>\n    </div>\n  </div>\n\n  <!-- ───── BODY ───── -->\n  <div style=\"background:#ffffff; padding:36px 32px; border-left:1px solid #e5e5ea; border-right:1px solid #e5e5ea;\">\n\n    <!-- Greeting -->\n    <p style=\"font-size:16px; color:#111; margin:0 0 14px;\">Hi <strong style=\"color:#d97706;\">{{ $json['First Name'] }}</strong>,</p>\n    <p style=\"color:#444; line-height:1.75; margin:0 0 20px; font-size:15px;\">Thank you for reaching out to Fire AI! We've reviewed your profile — a <strong>{{ $json['Company Size'] }}</strong> company in <strong>{{ $json['Industry'] }}</strong>. There's definitely a great opportunity here and we'd love to explore it together.</p>\n\n    <!-- Score -->\n    <div style=\"background:linear-gradient(135deg,#fffbeb,#fef3c7); border-left:4px solid #f59e0b; border-radius:8px; padding:18px 22px; margin:24px 0;\">\n      <p style=\"margin:0 0 4px; color:#b45309; font-size:12px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase;\">Your Lead Score</p>\n      <p style=\"margin:0; color:#d97706; font-size:28px; font-weight:800; line-height:1;\">{{ $json['Lead Score'] }}<span style=\"font-size:15px; color:#f59e0b;\">/100 — ⚡ WARM</span></p>\n    </div>\n\n    <!-- Their need -->\n    <p style=\"color:#444; line-height:1.75; font-size:15px; margin:0 0 28px;\">You mentioned: <em style=\"color:#d97706; font-style:italic;\">\"{{ $json['Needs'] }}\"</em> — This is something we've helped similar companies with before. Let's talk about what's possible for <strong>{{ $json['Company'] }}</strong>.</p>\n\n    <!-- ── SERVICES SECTION ── -->\n    <div style=\"border-top:2px solid #f0f0f5; padding-top:28px; margin-bottom:28px;\">\n      <p style=\"color:#111; font-size:17px; font-weight:800; margin:0 0 6px;\">🤖 What Fire AI Does</p>\n      <p style=\"color:#888; font-size:13px; margin:0 0 20px;\">Our core AI Agent services — built for businesses like yours</p>\n\n      <!-- Service 1 -->\n      <div style=\"display:flex; gap:16px; margin-bottom:16px; background:#fafafa; border-radius:10px; padding:18px;\">\n        <div style=\"width:44px; height:44px; background:linear-gradient(135deg,#d97706,#f59e0b); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0;\">⚡</div>\n        <div>\n          <p style=\"margin:0 0 4px; color:#111; font-size:14px; font-weight:700;\">AI Workflow Automation</p>\n          <p style=\"margin:0; color:#666; font-size:13px; line-height:1.6;\">আপনার business এর repetitive কাজগুলো AI দিয়ে automate করি — ২৪/৭ কোনো break ছাড়া।</p>\n        </div>\n      </div>\n\n      <!-- Service 2 -->\n      <div style=\"display:flex; gap:16px; margin-bottom:16px; background:#fafafa; border-radius:10px; padding:18px;\">\n        <div style=\"width:44px; height:44px; background:linear-gradient(135deg,#7c3aed,#a855f7); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0;\">🧠</div>\n        <div>\n          <p style=\"margin:0 0 4px; color:#111; font-size:14px; font-weight:700;\">Custom AI Agent Development</p>\n          <p style=\"margin:0; color:#666; font-size:13px; line-height:1.6;\">আপনার industry ও use case বুঝে একটা intelligent agent তৈরি করি যেটা শুধু আপনার জন্য।</p>\n        </div>\n      </div>\n\n      <!-- Service 3 -->\n      <div style=\"display:flex; gap:16px; margin-bottom:16px; background:#fafafa; border-radius:10px; padding:18px;\">\n        <div style=\"width:44px; height:44px; background:linear-gradient(135deg,#0ea5e9,#38bdf8); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0;\">🔗</div>\n        <div>\n          <p style=\"margin:0 0 4px; color:#111; font-size:14px; font-weight:700;\">System & Tool Integration</p>\n          <p style=\"margin:0; color:#666; font-size:13px; line-height:1.6;\">আপনার existing tools (CRM, ERP, Sheets, Slack ইত্যাদি) এর সাথে AI কে connect করি seamlessly।</p>\n        </div>\n      </div>\n\n      <!-- Service 4 -->\n      <div style=\"display:flex; gap:16px; background:#fafafa; border-radius:10px; padding:18px;\">\n        <div style=\"width:44px; height:44px; background:linear-gradient(135deg,#059669,#10b981); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0;\">📈</div>\n        <div>\n          <p style=\"margin:0 0 4px; color:#111; font-size:14px; font-weight:700;\">AI-Powered Lead & Sales Automation</p>\n          <p style=\"margin:0; color:#666; font-size:13px; line-height:1.6;\">Lead scoring, auto follow-up, email automation — পুরো sales pipeline AI দিয়ে চালান।</p>\n        </div>\n      </div>\n    </div>\n\n    <!-- ── PRICING SECTION ── -->\n    <div style=\"border-top:2px solid #f0f0f5; padding-top:28px; margin-bottom:32px;\">\n      <p style=\"color:#111; font-size:17px; font-weight:800; margin:0 0 6px;\">💰 Our Packages</p>\n      <p style=\"color:#888; font-size:13px; margin:0 0 20px;\">Transparent pricing — no hidden costs</p>\n\n      <!-- Starter -->\n      <div style=\"border:1px solid #e5e5ea; border-radius:12px; padding:20px; margin-bottom:12px;\">\n        <div style=\"display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;\">\n          <p style=\"margin:0; color:#111; font-size:15px; font-weight:700;\">🌱 Starter</p>\n          <p style=\"margin:0; color:#d97706; font-size:18px; font-weight:800;\">$499<span style=\"font-size:12px; color:#888;\">/mo</span></p>\n        </div>\n        <p style=\"margin:0; color:#666; font-size:13px; line-height:1.6;\">১টি AI Agent · Basic automation · Email support · Small team এর জন্য ideal</p>\n      </div>\n\n      <!-- Growth -->\n      <div style=\"border:2px solid #f59e0b; border-radius:12px; padding:20px; margin-bottom:12px; position:relative; background:#fffdf5;\">\n        <div style=\"position:absolute; top:-10px; right:16px; background:#f59e0b; color:#fff; font-size:11px; font-weight:700; padding:3px 12px; border-radius:20px; letter-spacing:0.05em;\">MOST POPULAR</div>\n        <div style=\"display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;\">\n          <p style=\"margin:0; color:#111; font-size:15px; font-weight:700;\">🚀 Growth</p>\n          <p style=\"margin:0; color:#d97706; font-size:18px; font-weight:800;\">$999<span style=\"font-size:12px; color:#888;\">/mo</span></p>\n        </div>\n        <p style=\"margin:0; color:#666; font-size:13px; line-height:1.6;\">৩টি AI Agent · Full automation suite · Priority support · Growing business এর জন্য</p>\n      </div>\n\n      <!-- Enterprise -->\n      <div style=\"border:1px solid #e5e5ea; border-radius:12px; padding:20px;\">\n        <div style=\"display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;\">\n          <p style=\"margin:0; color:#111; font-size:15px; font-weight:700;\">🏢 Enterprise</p>\n          <p style=\"margin:0; color:#d97706; font-size:18px; font-weight:800;\">Custom</p>\n        </div>\n        <p style=\"margin:0; color:#666; font-size:13px; line-height:1.6;\">Unlimited agents · Dedicated team · Custom integrations · Enterprise-grade SLA</p>\n      </div>\n    </div>\n\n    <!-- CTA -->\n    <div style=\"text-align:center; margin:8px 0 28px;\">\n      <a href=\"mailto:mehedi0017.fireai@gmail.com\" style=\"display:inline-block; background:linear-gradient(135deg,#d97706,#f59e0b); color:#fff; text-decoration:none; padding:15px 40px; border-radius:10px; font-weight:800; font-size:16px; letter-spacing:0.02em;\">Book a Discovery Call →</a>\n      <br>\n      <span style=\"color:#aaa; font-size:12px; display:inline-block; margin-top:10px;\">Reply করুন · mehedi0017.fireai@gmail.com</span>\n    </div>\n\n    <!-- Sign off -->\n    <div style=\"border-top:1px solid #f0f0f5; padding-top:20px;\">\n      <p style=\"color:#888; font-size:13px; line-height:1.8; margin:0;\">Looking forward to connecting,<br><strong style=\"color:#111;\">Fire AI Team</strong><br><span style=\"color:#d97706; font-size:12px;\">🔥 Igniting Intelligence</span></p>\n    </div>\n\n  </div>\n\n  <!-- ───── FOOTER ───── -->\n  <div style=\"background:#f9f9f9; border:1px solid #e5e5ea; border-top:none; border-radius:0 0 16px 16px; padding:16px 32px; text-align:center;\">\n    <p style=\"font-size:12px; color:#bbb; margin:0;\">© 2026 Fire AI &nbsp;·&nbsp; <a href=\"#\" style=\"color:#bbb; text-decoration:none;\">Unsubscribe</a></p>\n  </div>\n\n</div>\n</body>\n</html>",
+        "options": {}
+      },
+      "id": "9fa3db42-44bb-42aa-9883-06419555a550",
+      "name": "Send Warm Lead Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1664,
+        592
+      ],
+      "webhookId": "c65d57e4-4c4c-4912-a643-9b0f892bdaf7",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Y6JQL0D1RdliHuXk",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.Email }}",
+        "subject": "Thanks for your interest, {{ $json.firstName }} — here's what's next",
+        "message": "=<!DOCTYPE html> <html> <head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head> <body style=\"font-family: 'Segoe UI', Arial, sans-serif; background: #f0f0f5; margin: 0; padding: 24px;\"> <div style=\"max-width: 600px; margin: 0 auto;\">    <!-- ───── BANNER ───── -->   <div style=\"background: linear-gradient(135deg, #0f172a, #1e293b, #334155); border-radius: 16px 16px 0 0; padding: 0; overflow: hidden; position: relative;\">     <img src=\"https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=600&q=80\" alt=\"AI Technology\" style=\"width:100%; height:220px; object-fit:cover; opacity:0.35; display:block;\">     <div style=\"position:absolute; top:0; left:0; right:0; bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; text-align:center;\">       <div style=\"background:rgba(148,163,184,0.15); border:1px solid rgba(148,163,184,0.3); border-radius:50px; padding:5px 18px; font-size:11px; color:#cbd5e1; letter-spacing:0.12em; font-weight:700; margin-bottom:12px;\">❄️ WELCOME TO FIRE AI</div>       <h1 style=\"color:#ffffff; font-size:26px; font-weight:800; margin:0 0 8px; line-height:1.2; text-shadow:0 2px 12px rgba(0,0,0,0.5);\">স্বাগতম, {{ $json['First Name'] }}!<br>Your AI Journey Starts Here 🚀</h1>       <p style=\"color:rgba(255,255,255,0.65); font-size:14px; margin:0;\">Intelligent Agents. Real Results.</p>     </div>   </div>    <!-- ───── BODY ───── -->   <div style=\"background:#ffffff; padding:36px 32px; border-left:1px solid #e5e5ea; border-right:1px solid #e5e5ea;\">      <!-- Greeting -->     <p style=\"font-size:16px; color:#111; margin:0 0 14px;\">Hi <strong style=\"color:#475569;\">{{ $json['First Name'] }}</strong>,</p>     <p style=\"color:#444; line-height:1.75; margin:0 0 20px; font-size:15px;\">Thank you for connecting with Fire AI! We appreciate your interest and want you to know — whenever you're ready to explore AI automation for <strong>{{ $json['Company'] }}</strong>, we're right here. No pressure, no rush.</p>      <!-- Score -->     <div style=\"background:linear-gradient(135deg,#f8fafc,#f1f5f9); border-left:4px solid #64748b; border-radius:8px; padding:18px 22px; margin:24px 0;\">       <p style=\"margin:0 0 4px; color:#475569; font-size:12px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase;\">Your Lead Score</p>       <p style=\"margin:0; color:#64748b; font-size:28px; font-weight:800; line-height:1;\">{{ $json['Lead Score'] }}<span style=\"font-size:15px; color:#94a3b8;\">/100 — ❄️ EXPLORING</span></p>     </div>      <!-- Their need -->     <p style=\"color:#444; line-height:1.75; font-size:15px; margin:0 0 28px;\">You mentioned: <em style=\"color:#64748b; font-style:italic;\">\"{{ $json['Needs'] }}\"</em> — That's a great starting point. When you're ready, our team at Fire AI will be happy to walk you through exactly how AI can help.</p>      <!-- ── SERVICES SECTION ── -->     <div style=\"border-top:2px solid #f0f0f5; padding-top:28px; margin-bottom:28px;\">       <p style=\"color:#111; font-size:17px; font-weight:800; margin:0 0 6px;\">🤖 What Fire AI Does</p>       <p style=\"color:#888; font-size:13px; margin:0 0 20px;\">Our core AI Agent services — built for businesses like yours</p>        <!-- Service 1 -->       <div style=\"display:flex; gap:16px; margin-bottom:16px; background:#fafafa; border-radius:10px; padding:18px;\">         <div style=\"width:44px; height:44px; background:linear-gradient(135deg,#475569,#64748b); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0;\">⚡</div>         <div>           <p style=\"margin:0 0 4px; color:#111; font-size:14px; font-weight:700;\">AI Workflow Automation</p>           <p style=\"margin:0; color:#666; font-size:13px; line-height:1.6;\">আপনার business এর repetitive কাজগুলো AI দিয়ে automate করি — ২৪/৭ কোনো break ছাড়া।</p>         </div>       </div>        <!-- Service 2 -->       <div style=\"display:flex; gap:16px; margin-bottom:16px; background:#fafafa; border-radius:10px; padding:18px;\">         <div style=\"width:44px; height:44px; background:linear-gradient(135deg,#7c3aed,#a855f7); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0;\">🧠</div>         <div>           <p style=\"margin:0 0 4px; color:#111; font-size:14px; font-weight:700;\">Custom AI Agent Development</p>           <p style=\"margin:0; color:#666; font-size:13px; line-height:1.6;\">আপনার industry ও use case বুঝে একটা intelligent agent তৈরি করি যেটা শুধু আপনার জন্য।</p>         </div>       </div>        <!-- Service 3 -->       <div style=\"display:flex; gap:16px; margin-bottom:16px; background:#fafafa; border-radius:10px; padding:18px;\">         <div style=\"width:44px; height:44px; background:linear-gradient(135deg,#0ea5e9,#38bdf8); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0;\">🔗</div>         <div>           <p style=\"margin:0 0 4px; color:#111; font-size:14px; font-weight:700;\">System & Tool Integration</p>           <p style=\"margin:0; color:#666; font-size:13px; line-height:1.6;\">আপনার existing tools (CRM, ERP, Sheets, Slack ইত্যাদি) এর সাথে AI কে connect করি seamlessly।</p>         </div>       </div>        <!-- Service 4 -->       <div style=\"display:flex; gap:16px; background:#fafafa; border-radius:10px; padding:18px;\">         <div style=\"width:44px; height:44px; background:linear-gradient(135deg,#059669,#10b981); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0;\">📈</div>         <div>           <p style=\"margin:0 0 4px; color:#111; font-size:14px; font-weight:700;\">AI-Powered Lead & Sales Automation</p>           <p style=\"margin:0; color:#666; font-size:13px; line-height:1.6;\">Lead scoring, auto follow-up, email automation — পুরো sales pipeline AI দিয়ে চালান।</p>         </div>       </div>     </div>      <!-- ── PRICING SECTION ── -->     <div style=\"border-top:2px solid #f0f0f5; padding-top:28px; margin-bottom:32px;\">       <p style=\"color:#111; font-size:17px; font-weight:800; margin:0 0 6px;\">💰 Our Packages</p>       <p style=\"color:#888; font-size:13px; margin:0 0 20px;\">Transparent pricing — no hidden costs</p>        <!-- Starter -->       <div style=\"border:1px solid #e5e5ea; border-radius:12px; padding:20px; margin-bottom:12px;\">         <div style=\"display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;\">           <p style=\"margin:0; color:#111; font-size:15px; font-weight:700;\">🌱 Starter</p>           <p style=\"margin:0; color:#64748b; font-size:18px; font-weight:800;\">$499<span style=\"font-size:12px; color:#888;\">/mo</span></p>         </div>         <p style=\"margin:0; color:#666; font-size:13px; line-height:1.6;\">১টি AI Agent · Basic automation · Email support · Small team এর জন্য ideal</p>       </div>        <!-- Growth -->       <div style=\"border:2px solid #94a3b8; border-radius:12px; padding:20px; margin-bottom:12px; position:relative; background:#f8fafc;\">         <div style=\"position:absolute; top:-10px; right:16px; background:#64748b; color:#fff; font-size:11px; font-weight:700; padding:3px 12px; border-radius:20px; letter-spacing:0.05em;\">MOST POPULAR</div>         <div style=\"display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;\">           <p style=\"margin:0; color:#111; font-size:15px; font-weight:700;\">🚀 Growth</p>           <p style=\"margin:0; color:#64748b; font-size:18px; font-weight:800;\">$999<span style=\"font-size:12px; color:#888;\">/mo</span></p>         </div>         <p style=\"margin:0; color:#666; font-size:13px; line-height:1.6;\">৩টি AI Agent · Full automation suite · Priority support · Growing business এর জন্য</p>       </div>        <!-- Enterprise -->       <div style=\"border:1px solid #e5e5ea; border-radius:12px; padding:20px;\">         <div style=\"display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;\">           <p style=\"margin:0; color:#111; font-size:15px; font-weight:700;\">🏢 Enterprise</p>           <p style=\"margin:0; color:#64748b; font-size:18px; font-weight:800;\">Custom</p>         </div>         <p style=\"margin:0; color:#666; font-size:13px; line-height:1.6;\">Unlimited agents · Dedicated team · Custom integrations · Enterprise-grade SLA</p>       </div>     </div>      <!-- CTA -->     <div style=\"text-align:center; margin:8px 0 28px;\">       <a href=\"mailto:mehedix0017@gmail.com\" style=\"display:inline-block; background:linear-gradient(135deg,#475569,#64748b); color:#fff; text-decoration:none; padding:15px 40px; border-radius:10px; font-weight:800; font-size:16px; letter-spacing:0.02em;\">Any Questions? Reply Here →</a>       <br>       <span style=\"color:#aaa; font-size:12px; display:inline-block; margin-top:10px;\">No pressure · mehedix0017@gmail.com</span>     </div>      <!-- Sign off -->     <div style=\"border-top:1px solid #f0f0f5; padding-top:20px;\">       <p style=\"color:#888; font-size:13px; line-height:1.8; margin:0;\">Warm regards,<br><strong style=\"color:#111;\">Fire AI Team</strong><br><span style=\"color:#ff4500; font-size:12px;\">🔥 Igniting Intelligence</span></p>     </div>    </div>    <!-- ───── FOOTER ───── -->   <div style=\"background:#f9f9f9; border:1px solid #e5e5ea; border-top:none; border-radius:0 0 16px 16px; padding:16px 32px; text-align:center;\">     <p style=\"font-size:12px; color:#bbb; margin:0;\">© 2026 Fire AI &nbsp;·&nbsp; <a href=\"#\" style=\"color:#bbb; text-decoration:none;\">Unsubscribe</a></p>   </div>  </div> </body> </html>",
+        "options": {
+          "replyTo": "your-email@yourdomain.com"
+        }
+      },
+      "id": "e985ba94-3aa2-491a-868f-8c7c2c1fad13",
+      "name": "Send Cold Lead Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1664,
+        784
+      ],
+      "webhookId": "476ffc60-4556-483b-a398-4fa1aa5466fd",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Y6JQL0D1RdliHuXk",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Phase - 1\n# Collect Lead, Save Lead Data, Generate Lead Score, Sent Email to Lead",
+        "height": 672,
+        "width": 1312,
+        "color": "#03122B"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        784,
+        272
+      ],
+      "typeVersion": 1,
+      "id": "d136e98c-ca2f-4dd9-9d7c-ff0606bbb3e7",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-warm",
+              "leftValue": "={{ $json.Category }}",
+              "rightValue": "Warm",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "66c3d053-6bcd-45bb-8782-02ca6126db6f",
+      "name": "Is Warm Lead?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        704
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-hot",
+              "leftValue": "={{ $json.Category }}",
+              "rightValue": "=Hot",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "42e7f9f8-8096-4e04-bd50-f5fa617e5f9b",
+      "name": "Is Hot Lead?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1k7uyfqmY9tcwFN4w_OgKyY42QsKS2h09NtqGAA3KIv8",
+          "mode": "list",
+          "cachedResultName": "Lead Data",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1k7uyfqmY9tcwFN4w_OgKyY42QsKS2h09NtqGAA3KIv8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1k7uyfqmY9tcwFN4w_OgKyY42QsKS2h09NtqGAA3KIv8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Email": "={{ $('Save to Google Sheets').item.json.Email }}",
+            "thread Id": "={{ $json.threadId }}"
+          },
+          "matchingColumns": [
+            "Email"
+          ],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "First Name",
+              "displayName": "First Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Last Name",
+              "displayName": "Last Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Full Name",
+              "displayName": "Full Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Industry",
+              "displayName": "Industry",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Company Size",
+              "displayName": "Company Size",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Budget (USD)",
+              "displayName": "Budget (USD)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Timeline",
+              "displayName": "Timeline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Needs",
+              "displayName": "Needs",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Lead Score",
+              "displayName": "Lead Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Priority",
+              "displayName": "Priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Score Breakdown",
+              "displayName": "Score Breakdown",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "thread Id",
+              "displayName": "thread Id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1888,
+        592
+      ],
+      "id": "fedb5513-8124-4739-ae7f-bcda26110bc3",
+      "name": "Append or update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7aq1iLN7h57klZOU",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "unit": "minutes"
+            }
+          ]
+        },
+        "filters": {
+          "readStatus": "unread"
+        }
+      },
+      "id": "bcb156e0-4cef-42e2-8afc-67827542e4e3",
+      "name": "Gmail Reply Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [
+        848,
+        1232
+      ],
+      "executeOnce": false,
+      "retryOnFail": false,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Y6JQL0D1RdliHuXk",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const email = $input.first().json;\n\nconst fromRaw = email.from || email.From || '';\nconst senderEmail = fromRaw.includes('<')\n  ? fromRaw.split('<')[1].split('>')[0].trim()\n  : fromRaw.trim();\n\nconst ourEmail = 'mehedi0017.fireai@gmail.com';\nif (senderEmail.toLowerCase() === ourEmail.toLowerCase()) return [];\n\nconst labels = email.labels || [];\nconst isInbox = labels.some(l =>\n  (l.id || '').toString().toUpperCase().includes('INBOX') ||\n  (l.name || '').toString().toUpperCase().includes('INBOX')\n);\nif (!isInbox) return [];\n\nreturn [{\n  json: {\n    threadId:    email.threadId || '',\n    senderEmail: senderEmail,\n    senderName:  fromRaw.split('<')[0].trim(),\n    snippet:     email.snippet || '',\n    subject:     email.subject || email.Subject || '',\n    messageId:   email.id || '',\n  }\n}];"
+      },
+      "id": "204958b3-d276-4a44-a782-97e3dc1f43ed",
+      "name": "Extract Email Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        1232
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1k7uyfqmY9tcwFN4w_OgKyY42QsKS2h09NtqGAA3KIv8",
+          "mode": "list",
+          "cachedResultName": "Lead Data",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1k7uyfqmY9tcwFN4w_OgKyY42QsKS2h09NtqGAA3KIv8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1k7uyfqmY9tcwFN4w_OgKyY42QsKS2h09NtqGAA3KIv8/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "thread Id",
+              "lookupValue": "={{ $json.threadId }}"
+            },
+            {
+              "lookupColumn": "Email",
+              "lookupValue": "={{ $json.senderEmail }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "50b8a904-2d98-4ab3-a07e-1ca7af02a145",
+      "name": "Lookup by Thread ID",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1184,
+        1232
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7aq1iLN7h57klZOU",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const emailData = $('Extract Email Data').first().json;\n\n// Case 1: Thread ID match\nlet leadData = null;\ntry {\n  const threadMatch = $('Lookup by Thread ID').first().json;\n  if (threadMatch && threadMatch['Email']) {\n    leadData = { ...threadMatch, matchType: 'threadId' };\n  }\n} catch(e) {}\n\n// Case 2: Email match (client replied from new email)\nif (!leadData) {\n  try {\n    const emailMatch = $('Lookup by Email').first().json;\n    if (emailMatch && emailMatch['Email']) {\n      leadData = { ...emailMatch, matchType: 'email' };\n    }\n  } catch(e) {}\n}\n\n// Case 3: No match — ignore\nif (!leadData) return [];\n\nreturn [{\n  json: {\n    firstName:   leadData['First Name'] || '',\n    lastName:    leadData['Last Name'] || '',\n    email:       leadData['Email'] || '',\n    company:     leadData['Company'] || '',\n    industry:    leadData['Industry'] || '',\n    companySize: leadData['Company Size'] || '',\n    needs:       leadData['Needs'] || '',\n    leadScore:   leadData['Lead Score'] || '',\n    category:    leadData['Category'] || 'Cold',\n    matchType:   leadData.matchType,\n    threadId:    emailData.threadId,\n    senderEmail: emailData.senderEmail,\n    senderName:  emailData.senderName,\n    snippet:     emailData.snippet,\n    subject:     emailData.subject,\n  }\n}];"
+      },
+      "id": "e5d8301d-31e6-492f-9794-d5b6232ce411",
+      "name": "Merge & Validate Lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1584,
+        1216
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\n\nconst toneMap = {\n  Hot:  'urgent, enthusiastic and action-oriented. This is a HIGH priority lead. Push strongly for an immediate call this week. Be warm but decisive and confident.',\n  Warm: 'friendly, helpful and curious. This is a promising lead. Suggest a 20-minute discovery call and ask a follow-up question about their needs.',\n  Cold: 'polite, informative and nurturing. This lead needs more time. Be helpful, offer value, and suggest a low-commitment next step.',\n};\nconst tone = toneMap[d.category] || toneMap.Cold;\n\nconst systemPrompt = `You are a professional sales representative for Fire AI, a company that builds custom AI Agents for businesses.\nYour job is to reply to leads who have responded to your outreach email.\nAlways write in a natural, human tone — never robotic or overly formal.\nKeep replies concise (max 120 words). Sign off as \"Fire AI Team\".\nNever mention AI or automation in your reply.`;\n\nconst chatInput = `Write a reply email to this lead.\n\nLEAD CONTEXT:\n- Name: ${d.firstName} ${d.lastName}\n- Company: ${d.company}\n- Industry: ${d.industry}\n- Company Size: ${d.companySize}\n- Their original need: \"${d.needs}\"\n- Lead Score: ${d.leadScore}/100\n- Lead Category: ${d.category}\n- How we matched them: ${d.matchType === 'threadId' ? 'They replied to our original email (same thread)' : 'They emailed us from a different email but are in our leads list'}\n\nTHEIR LATEST MESSAGE:\n\"${d.snippet}\"\n\nINSTRUCTIONS:\n- Tone: ${tone}\n- Reference their actual message naturally\n- Do NOT include a subject line — only write the email body\n- End with a clear call-to-action\n- Sign off as: Fire AI Team`;\n\nreturn [{\n  json: {\n    systemPrompt,\n    chatInput,\n    threadId:    d.threadId,\n    toEmail:     d.senderEmail,\n    replySubject: `Re: ${d.subject}`,\n    category:    d.category,\n    firstName:   d.firstName,\n    email:       d.email,\n  }\n}];"
+      },
+      "id": "c6a4080b-5d8f-4de7-bdfc-2915bf6809a7",
+      "name": "Prepare AI Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1744,
+        1216
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiResponse = $input.first().json;\nconst prevData = $('Prepare AI Prompt').first().json;\n\n// Extract reply text from OpenAI response\nconst replyBody = aiResponse.choices?.[0]?.message?.content\n  || 'Thank you for your reply. We will get back to you shortly.\\n\\nBest regards,\\nFire AI Team';\n\nreturn [{\n  json: {\n    threadId:     prevData.threadId,\n    toEmail:      prevData.toEmail,\n    replySubject: prevData.replySubject,\n    replyBody:    replyBody.trim(),\n    category:     prevData.category,\n    firstName:    prevData.firstName,\n    email:        prevData.email,\n  }\n}];"
+      },
+      "id": "d4d2cd2f-32fa-489f-8849-d74f242bff1a",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2192,
+        1216
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "reply",
+        "messageId": "={{ $('Extract Email Data').item.json.messageId }}",
+        "emailType": "text",
+        "message": "={{ $('AI Agent').item.json.output }}",
+        "options": {}
+      },
+      "id": "0f3a4613-f4b5-48f2-9b9f-37da72bbed26",
+      "name": "Send Auto-Reply",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2368,
+        1216
+      ],
+      "webhookId": "8125db18-24f9-4ed5-a0fa-b8b0dc9bd800",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Y6JQL0D1RdliHuXk",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1904,
+        1216
+      ],
+      "id": "0d908b62-c547-4d50-ade8-bbdf5d33ac3d",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1904,
+        1408
+      ],
+      "id": "2d72f3ef-a4e6-40f7-9e1b-8d4c675d9536",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "chIAZhkrR3OMLRUY",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Phase - 2 \n# Email Automation ( If Reply Comes)",
+        "height": 832,
+        "width": 2000,
+        "color": "#2E0000"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        784,
+        960
+      ],
+      "typeVersion": 1,
+      "id": "3c17d816-37d1-4bbc-a9ab-e16c3461086d",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "operation": "markAsRead",
+        "messageId": "={{ $('Gmail Reply Trigger').item.json.id }}"
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2560,
+        1216
+      ],
+      "id": "7027313b-9c5a-40b9-8e4c-54000b113b1a",
+      "name": "Mark a message as read",
+      "webhookId": "9c99def4-5315-4b9a-8548-271dd386f66a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Y6JQL0D1RdliHuXk",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "0cb279ce-ce5a-4a0e-9365-8615e3802429",
+              "leftValue": "={{ $json.threadID }}",
+              "rightValue": "={{ $('Gmail Reply Trigger').item.json.threadId }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "2b31dd9c-980e-41cf-b003-44647f470840",
+              "leftValue": "={{ $json.Email }}",
+              "rightValue": "={{ $('Extract Email Data').item.json.senderEmail }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1376,
+        1232
+      ],
+      "id": "799bb686-81db-4b7a-b2a6-a27dc99bede3",
+      "name": "If"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        1536
+      ],
+      "id": "b10c1022-e5d6-4608-bfd0-80400c2ab0a9",
+      "name": "No Operation, do nothing"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Lead Form Webhook": {
+      "main": [
+        [
+          {
+            "node": "Calculate Lead Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Lead Score": {
+      "main": [
+        [
+          {
+            "node": "Save to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Is Hot Lead?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Warm Lead?": {
+      "main": [
+        [
+          {
+            "node": "Send Warm Lead Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Cold Lead Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Hot Lead?": {
+      "main": [
+        [
+          {
+            "node": "Send Hot Lead Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Warm Lead?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Warm Lead Email": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Hot Lead Email": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Cold Lead Email": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Reply Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Email Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Email Data": {
+      "main": [
+        [
+          {
+            "node": "Lookup by Thread ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup by Thread ID": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge & Validate Lead": {
+      "main": [
+        [
+          {
+            "node": "Prepare AI Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare AI Prompt": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Response": {
+      "main": [
+        [
+          {
+            "node": "Send Auto-Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Auto-Reply": {
+      "main": [
+        [
+          {
+            "node": "Mark a message as read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Merge & Validate Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "650f6ed5-f777-4d54-a49c-92f688c4ea12",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1cf9b1bc467d605f97326bf678b2791a2ec92aff9a6b19fb5cb12fc6dc13b459"
+  },
+  "id": "xA96OinRHgairqw0",
+  "tags": [
+    {
+      "updatedAt": "2026-03-09T18:52:59.148Z",
+      "createdAt": "2026-03-09T18:52:59.148Z",
+      "id": "ZhaYhK5ZzkmWog2U",
+      "name": "Phase 2"
+    },
+    {
+      "updatedAt": "2026-03-06T18:57:29.997Z",
+      "createdAt": "2026-03-06T18:57:29.997Z",
+      "id": "yR6nGyiz40iEIqWb",
+      "name": "Lead Generation"
+    }
+  ]
+}

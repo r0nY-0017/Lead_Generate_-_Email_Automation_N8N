@@ -1,10 +1,20 @@
+<<<<<<< Updated upstream
 # 🔥 Fire AI — Lead Generation & Email Automation System
+=======
+# 🔥 Lead Generation & Email Automation System
+>>>>>>> Stashed changes
 
 An end-to-end automated lead generation and email follow-up system built with **n8n**, **Google Sheets**, **Gmail**, and **OpenAI**. When a potential client submits the lead form, the system automatically scores them, saves their data, sends a personalized email, and handles all future replies using AI.
 
 ---
+<<<<<<< Updated upstream
 
 
+=======
+![alt text](<Screenshot 2026-03-14 034021.png>)
+![alt text](<Screenshot 2026-03-14 034106.png>)
+![alt text](<Screenshot 2026-03-14 034037.png>)
+>>>>>>> Stashed changes
 
 ## 🚀 Features
 
@@ -130,7 +140,11 @@ Update Lead Status in Google Sheets
 SL | Timestamp | First Name | Last Name | Full Name | Email | Phone |
 Company | Industry | Company Size | Budget (USD) | Timeline | Needs |
 Lead Score | Category | Priority | Score Breakdown |
+<<<<<<< Updated upstream
 Email Sent | Status | Thread ID | Last Reply | Reply Sent At
+=======
+Email Sent | Status | Thread ID
+>>>>>>> Stashed changes
 ```
 
 > **Note:** The `SL` column uses this formula — paste in cell A2 and drag down:
@@ -166,7 +180,11 @@ Search and replace these values in both workflows:
 |---|---|
 | `YOUR_GOOGLE_SHEET_ID_HERE` | Your actual Sheet ID |
 | `YOUR_OPENAI_API_KEY_HERE` | Your OpenAI API key |
+<<<<<<< Updated upstream
 | `mehedi0017.fireai@gmail.com` | Your Gmail address |
+=======
+| `example@gmail.com` | Your Gmail address |
+>>>>>>> Stashed changes
 
 ---
 
@@ -229,6 +247,12 @@ The tone of the AI reply automatically adjusts based on lead category:
 
 ## 🔥 Built By
 
+<<<<<<< Updated upstream
 **Fire AI** — Intelligent Agents. Real Results.
 
 📧 mehedi0017.fireai@gmail.com
+=======
+**Md Mehedi Hasan Rony**
+
+📧 hasan15-5976@diu.edu.bd
+>>>>>>> Stashed changes
