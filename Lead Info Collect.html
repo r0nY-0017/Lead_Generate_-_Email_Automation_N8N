@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fire AI — Get Started</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --primary:  #ff4500;
+    --primary2: #ff6b35;
+    --bg:       #f5f4f0;
+    --white:    #ffffff;
+    --border:   #e8e4df;
+    --text:     #1a1410;
+    --muted:    #9a8f87;
+    --label:    #6b5f57;
+    --error:    #e53e3e;
+  }
+
+  body {
+    font-family: 'Poppins', sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: -100px; right: -100px;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(255,69,0,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    bottom: -100px; left: -100px;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(255,107,53,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .wrapper {
+    width: 100%;
+    max-width: 720px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Brand */
+  .brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 2rem;
+  }
+  .brand-icon {
+    width: 40px; height: 40px;
+    background: linear-gradient(135deg, var(--primary), var(--primary2));
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    box-shadow: 0 4px 14px rgba(255,69,0,0.25);
+  }
+  .brand-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .brand-name span { color: var(--primary); }
+
+  /* Heading */
+  .heading { margin-bottom: 2rem; text-align: center; }
+  .heading h1 {
+    font-size: clamp(1.75rem, 4vw, 2.35rem);
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1.15;
+    letter-spacing: -0.5px;
+    margin-bottom: 0.5rem;
+  }
+  .heading h1 em { font-style: normal; color: var(--primary); }
+  .heading p {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.6;
+    font-weight: 400;
+  }
+
+  /* Card */
+  .card {
+    background: var(--white);
+    border-radius: 24px;
+    padding: 2.25rem 2rem;
+    box-shadow: 0 2px 40px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+    border: 1px solid var(--border);
+  }
+
+  /* Section label */
+  .section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--primary);
+    margin-bottom: 1rem;
+    margin-top: 1.75rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .section-label:first-child { margin-top: 0; }
+
+  /* Grid */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .full { grid-column: 1 / -1; }
+
+  /* Field */
+  .field { display: flex; flex-direction: column; gap: 5px; }
+
+  label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--label);
+  }
+  label .req { color: var(--primary); margin-left: 2px; }
+
+  input, select, textarea {
+    font-family: 'Poppins', sans-serif;
+    font-size: 13.5px;
+    font-weight: 400;
+    color: var(--text);
+    background: #faf9f7;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 11px 14px;
+    outline: none;
+    transition: all 0.18s;
+    width: 100%;
+  }
+  input::placeholder, textarea::placeholder { color: #c4bab3; font-weight: 300; }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--primary);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(255,69,0,0.08);
+  }
+  select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239a8f87' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-color: #faf9f7;
+    padding-right: 36px;
+  }
+  textarea { resize: none; min-height: 88px; line-height: 1.6; }
+
+  .field.error input,
+  .field.error select,
+  .field.error textarea { border-color: var(--error); background: #fff5f5; }
+  .error-msg { display: none; font-size: 11px; color: var(--error); font-weight: 500; }
+  .field.error .error-msg { display: block; }
+
+  /* Budget slider */
+  .budget-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .budget-label { font-size: 12px; font-weight: 600; color: var(--label); }
+  .budget-val { font-size: 17px; font-weight: 700; color: var(--primary); }
+  input[type="range"] {
+    padding: 0; height: 5px;
+    border: none; border-radius: 100px;
+    background: var(--border);
+    cursor: pointer;
+    accent-color: var(--primary);
+    box-shadow: none;
+  }
+  input[type="range"]:focus { box-shadow: none; border: none; }
+
+  /* Timeline radios */
+  .timeline-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .tl-option input[type="radio"] { display: none; }
+  .tl-option label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 12px 8px;
+    background: #faf9f7;
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: none;
+    letter-spacing: 0;
+    transition: all 0.15s;
+  }
+  .tl-option label .ico { font-size: 20px; }
+  .tl-option input:checked + label {
+    border-color: var(--primary);
+    background: #fff5f2;
+    color: var(--primary);
+    font-weight: 600;
+    box-shadow: 0 0 0 3px rgba(255,69,0,0.08);
+  }
+  .tl-option label:hover { border-color: #ffb59e; color: var(--text); }
+
+  /* Submit button */
+  .submit-btn {
+    width: 100%;
+    margin-top: 1.5rem;
+    padding: 14px;
+    background: linear-gradient(135deg, var(--primary), var(--primary2));
+    border: none;
+    border-radius: 12px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 14.5px;
+    font-weight: 700;
+    color: #fff;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.2s;
+    box-shadow: 0 4px 18px rgba(255,69,0,0.3);
+  }
+  .submit-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(255,69,0,0.35); }
+  .submit-btn:active { transform: translateY(0); }
+  .submit-btn:disabled { opacity: 0.65; cursor: not-allowed; transform: none; }
+  .submit-btn .arrow { margin-left: 6px; display: inline-block; transition: transform 0.2s; }
+  .submit-btn:hover .arrow { transform: translateX(4px); }
+
+  .spinner {
+    width: 15px; height: 15px;
+    border: 2px solid rgba(255,255,255,0.35);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 7px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .privacy {
+    text-align: center;
+    margin-top: 14px;
+    font-size: 11.5px;
+    color: var(--muted);
+  }
+  .privacy a { color: var(--primary); text-decoration: none; }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0; z-index: 999;
+    background: rgba(26,20,16,0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .modal-box {
+    background: var(--white);
+    border-radius: 24px;
+    padding: 2.5rem 2rem;
+    max-width: 380px; width: 100%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    animation: popIn 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes popIn {
+    from { transform: scale(0.85); opacity: 0; }
+    to   { transform: scale(1);    opacity: 1; }
+  }
+  .modal-icon {
+    width: 70px; height: 70px;
+    background: linear-gradient(135deg, #ff4500, #ff6b35);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 30px;
+    margin: 0 auto 1.25rem;
+    box-shadow: 0 8px 24px rgba(255,69,0,0.3);
+  }
+  .modal-box h2 {
+    font-size: 1.3rem; font-weight: 700;
+    color: var(--text); margin-bottom: 0.5rem;
+  }
+  .modal-box p {
+    font-size: 13.5px; color: var(--muted);
+    line-height: 1.6; margin-bottom: 1.5rem; font-weight: 400;
+  }
+  .modal-close {
+    background: linear-gradient(135deg, var(--primary), var(--primary2));
+    border: none; border-radius: 10px;
+    padding: 11px 36px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px; font-weight: 600;
+    color: #fff; cursor: pointer;
+    box-shadow: 0 4px 14px rgba(255,69,0,0.3);
+    transition: transform 0.15s, box-shadow 0.2s;
+  }
+  .modal-close:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(255,69,0,0.35); }
+
+  @media (max-width: 480px) {
+    .grid { grid-template-columns: 1fr; }
+    .full { grid-column: 1; }
+    .card { padding: 1.5rem; }
+    .timeline-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrapper">
+
+  <div class="brand">
+    <div class="brand-icon">🔥</div>
+    <div class="brand-name">Fire <span>AI</span></div>
+  </div>
+
+  <div class="heading">
+    <h1>Let's Build Something<br><em>Intelligent</em> Together</h1>
+    <p>Fill out the form and our team will reach out with a tailored AI Agent solution for your business.</p>
+  </div>
+
+  <div class="card">
+
+    <div class="section-label">Personal Info</div>
+    <div class="grid">
+
+      <div class="field" id="field-firstName">
+        <label>First Name <span class="req">*</span></label>
+        <input type="text" id="firstName" placeholder="Rahim" autocomplete="given-name">
+        <span class="error-msg">Please enter your first name</span>
+      </div>
+
+      <div class="field" id="field-lastName">
+        <label>Last Name <span class="req">*</span></label>
+        <input type="text" id="lastName" placeholder="Uddin" autocomplete="family-name">
+        <span class="error-msg">Please enter your last name</span>
+      </div>
+
+      <div class="field full" id="field-email">
+        <label>Business Email <span class="req">*</span></label>
+        <input type="email" id="email" placeholder="rahim@company.com" autocomplete="email">
+        <span class="error-msg">Please enter a valid email</span>
+      </div>
+
+      <div class="field full">
+        <label>Phone Number</label>
+        <input type="tel" id="phone" placeholder="+880 1700 000000" autocomplete="tel">
+      </div>
+
+    </div>
+
+    <div class="section-label">Company Details</div>
+    <div class="grid">
+
+      <div class="field full" id="field-company">
+        <label>Company Name <span class="req">*</span></label>
+        <input type="text" id="company" placeholder="Acme Ltd." autocomplete="organization">
+        <span class="error-msg">Please enter your company name</span>
+      </div>
+
+      <div class="field" id="field-industry">
+        <label>Industry <span class="req">*</span></label>
+        <select id="industry">
+          <option value="">Select industry...</option>
+          <option value="ecommerce">E-Commerce</option>
+          <option value="saas">SaaS / Tech</option>
+          <option value="retail">Retail</option>
+          <option value="finance">Finance</option>
+          <option value="healthcare">Healthcare</option>
+          <option value="education">Education</option>
+          <option value="realestate">Real Estate</option>
+          <option value="agency">Agency / Marketing</option>
+          <option value="manufacturing">Manufacturing</option>
+          <option value="other">Other</option>
+        </select>
+        <span class="error-msg">Please select an industry</span>
+      </div>
+
+      <div class="field" id="field-companySize">
+        <label>Company Size <span class="req">*</span></label>
+        <select id="companySize">
+          <option value="">Select size...</option>
+          <option value="1-10">1–10 employees</option>
+          <option value="11-50">11–50 employees</option>
+          <option value="51-200">51–200 employees</option>
+          <option value="201-500">201–500 employees</option>
+          <option value="500+">500+ employees</option>
+        </select>
+        <span class="error-msg">Please select company size</span>
+      </div>
+
+    </div>
+
+    <div class="section-label">Project Info</div>
+    <div class="grid">
+
+      <div class="field full">
+        <div class="budget-row">
+          <span class="budget-label">Monthly Budget (USD)</span>
+          <span class="budget-val" id="budgetDisplay">$5,000</span>
+        </div>
+        <input type="range" id="budget" min="500" max="50000" step="500" value="5000">
+      </div>
+
+      <div class="field full">
+        <label>Timeline to Start <span class="req">*</span></label>
+        <div class="timeline-grid">
+          <div class="tl-option">
+            <input type="radio" name="timeline" id="tl-immediate" value="immediate">
+            <label for="tl-immediate"><span class="ico">⚡</span>Immediately</label>
+          </div>
+          <div class="tl-option">
+            <input type="radio" name="timeline" id="tl-month" value="1-3months">
+            <label for="tl-month"><span class="ico">📅</span>1–3 Months</label>
+          </div>
+          <div class="tl-option">
+            <input type="radio" name="timeline" id="tl-later" value="6months+">
+            <label for="tl-later"><span class="ico">🗓️</span>6+ Months</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="field full" id="field-needs">
+        <label>What are you looking for? <span class="req">*</span></label>
+        <textarea id="needs" placeholder="Describe your main challenge or goal briefly..."></textarea>
+        <span class="error-msg">Please describe your needs (min 10 characters)</span>
+      </div>
+
+    </div>
+
+    <button class="submit-btn" id="submitBtn" onclick="handleSubmit()">
+      Submit Registration <span class="arrow">→</span>
+    </button>
+
+    <p class="privacy">🔒 Your data is safe & secure. No spam, ever. <a href="#">Privacy Policy</a></p>
+
+  </div>
+</div>
+
+<!-- Success Modal -->
+<div class="modal-overlay" id="successModal">
+  <div class="modal-box">
+    <div class="modal-icon">✓</div>
+    <h2>Registration Successful!</h2>
+    <p id="modalMsg">Your information has been submitted. We'll be in touch soon!</p>
+    <button class="modal-close" onclick="closeModal()">Done</button>
+  </div>
+</div>
+
+<script>
+  const N8N_WEBHOOK_URL = "https://mehedi0017xfireai.app.n8n.cloud/webhook/lead-capture";
+
+  document.getElementById('budget').addEventListener('input', function() {
+    document.getElementById('budgetDisplay').textContent = '$' + Number(this.value).toLocaleString();
+  });
+
+  function validate() {
+    let valid = true;
+    const checks = [
+      { id: 'firstName',   fieldId: 'field-firstName',   test: v => v.trim().length > 0 },
+      { id: 'lastName',    fieldId: 'field-lastName',    test: v => v.trim().length > 0 },
+      { id: 'email',       fieldId: 'field-email',       test: v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) },
+      { id: 'company',     fieldId: 'field-company',     test: v => v.trim().length > 0 },
+      { id: 'industry',    fieldId: 'field-industry',    test: v => v !== '' },
+      { id: 'companySize', fieldId: 'field-companySize', test: v => v !== '' },
+      { id: 'needs',       fieldId: 'field-needs',       test: v => v.trim().length > 10 },
+    ];
+    checks.forEach(({ id, fieldId, test }) => {
+      const el    = document.getElementById(id);
+      const field = document.getElementById(fieldId);
+      if (!test(el.value)) { field.classList.add('error'); valid = false; }
+      else field.classList.remove('error');
+    });
+    if (!document.querySelector('input[name="timeline"]:checked')) valid = false;
+    return valid;
+  }
+
+  function showModal(name, email) {
+    document.getElementById('modalMsg').innerHTML =
+      `Thanks for submitting! You will get an email from us shortly at <strong style="color:#ff4500">${email}</strong>.`;
+    document.getElementById('successModal').style.display = 'flex';
+  }
+
+  function closeModal() {
+    document.getElementById('successModal').style.display = 'none';
+    document.getElementById('firstName').value = '';
+    document.getElementById('lastName').value = '';
+    document.getElementById('email').value = '';
+    document.getElementById('phone').value = '';
+    document.getElementById('company').value = '';
+    document.getElementById('industry').value = '';
+    document.getElementById('companySize').value = '';
+    document.getElementById('budget').value = '5000';
+    document.getElementById('budgetDisplay').textContent = '$5,000';
+    document.getElementById('needs').value = '';
+    document.querySelectorAll('input[name="timeline"]').forEach(r => r.checked = false);
+  }
+
+  document.getElementById('successModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+
+  async function handleSubmit() {
+    if (!validate()) return;
+    const timeline = document.querySelector('input[name="timeline"]:checked');
+    const payload = {
+      firstName:   document.getElementById('firstName').value.trim(),
+      lastName:    document.getElementById('lastName').value.trim(),
+      email:       document.getElementById('email').value.trim(),
+      phone:       document.getElementById('phone').value.trim(),
+      company:     document.getElementById('company').value.trim(),
+      industry:    document.getElementById('industry').value,
+      companySize: document.getElementById('companySize').value,
+      budget:      document.getElementById('budget').value,
+      timeline:    timeline ? timeline.value : '',
+      needs:       document.getElementById('needs').value.trim(),
+      submittedAt: new Date().toISOString(),
+      source:      window.location.href,
+    };
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Submitting...';
+    try {
+      await fetch(N8N_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).catch(() => {});
+      showModal(payload.firstName, payload.email);
+    } catch(e) {
+      showModal(payload.firstName, payload.email);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = 'Submit Registration <span class="arrow">→</span>';
+    }
+  }
+</script>
+</body>
+</html>
